@@ -83,6 +83,26 @@ class SplitDataSet(object):
         end = self._index_in_epoch
         return self._images[start:end], self._labels[start:end]
     
+    def next_bag_batch(self, batch_size, fake_data=False):
+        """Return the next `batch_size` examples from this data set."""
+        start = self._bag_index_in_epoch
+        self._bag_index_in_epoch += batch_size
+        if self._bag_index_in_epoch > self._num_examples:
+            # Finished epoch
+            self._bag_epochs_completed += 1
+            # Shuffle the data
+            perm = np.arange(self._num_examples)
+            np.random.shuffle(perm)
+            self._bag_lists = self._bag_lists[perm]
+            #self._labels = np.array(self._labels)
+            self._labels = self._labels[perm]
+            # Start next epoch
+            start = 0
+            self._bag_index_in_epoch = batch_size
+            assert batch_size <= self._num_examples
+        end = self._bag_index_in_epoch
+        return self._bag_lists[start:end], self._labels[start:end]
+    
     def _creat_bags(self,patch_length):
         """transform all frames into bags of instances with one label"""
         '''return : bags[num_imgs, num_instance_in_bag, patch_length, patch_length], labels[num_imgs,one_hot_bag_label]'''
@@ -141,6 +161,9 @@ class SplitDataSet(object):
             one_hot_labels.append(one_hot)
         one_hot_labels=np.array(one_hot_labels)
         return one_hot_labels
+    
+
+
 
 def to_scalar_label(areas,num_classes):
     """Convert '60-' to 0, convert '60+'to 1 """
